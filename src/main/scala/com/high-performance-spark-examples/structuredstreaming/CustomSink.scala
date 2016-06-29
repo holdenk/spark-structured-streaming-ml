@@ -13,7 +13,8 @@ import org.apache.spark.sql.execution.streaming.Sink
  * time slice with the dataset representing the time slice.
  * Provided func must consume the dataset (e.g. call `foreach` or `collect`).
  * As per SPARK-16020 arbitrary transformations are not supported, but converting to an RDD
- * will allow for more transformations beyond `foreach` and `collect`.
+ * will allow for more transformations beyond `foreach` and `collect` while preserving the
+ * incremental planning.
  */
 case class ForeachDatasetSinkProvider[T: Encoder](func: Dataset[T] => Unit)
     extends StreamSinkProvider {
