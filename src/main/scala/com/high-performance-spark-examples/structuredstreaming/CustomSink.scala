@@ -12,6 +12,8 @@ import org.apache.spark.sql.execution.streaming.Sink
  * Creates a custom sink similar to the old foreachRDD. Provided function is called for each
  * time slice with the dataset representing the time slice.
  * Provided func must consume the dataset (e.g. call `foreach` or `collect`).
+ * As per SPARK-16020 arbitrary transformations are not supported, but converting to an RDD
+ * will allow for more transformations beyond `foreach` and `collect`.
  */
 case class ForeachDatasetSinkProvider[T: Encoder](func: Dataset[T] => Unit)
     extends StreamSinkProvider {
