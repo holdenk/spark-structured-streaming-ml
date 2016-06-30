@@ -3,10 +3,12 @@
  */
 package com.highperformancespark.examples.structuredstreaming
 
-import org.apache.spark._
-import org.apache.spark.sql.{Dataset, DataFrame, Encoder, SQLContext}
-import org.apache.spark.sql.sources.StreamSinkProvider
+import com.high.performance.spark.examples.structuredstreaming.StreamingNaiveBayes
+import org.apache.spark.sql.streaming.OutputMode
+import org.apache.spark.sql._
+import org.apache.spark.sql.sources.{DataSourceRegister, StreamSinkProvider}
 import org.apache.spark.sql.execution.streaming.Sink
+
 
 /**
  * Creates a custom sink similar to the old foreachRDD. Provided function is called for each
@@ -16,10 +18,13 @@ import org.apache.spark.sql.execution.streaming.Sink
  * will allow for more transformations beyond `foreach` and `collect` while preserving the
  * incremental planning.
  */
-case class ForeachDatasetSinkProvider[T: Encoder](func: Dataset[T] => Unit)
-    extends StreamSinkProvider {
-  def createSink(sqlContext: SQLContext, params: Map[String, String], cols: Seq[String]) = {
-    new ForeachDatasetSink(func)
+class ForeachDatasetSinkProvider extends StreamSinkProvider {
+  def createSink(
+      sqlContext: SQLContext,
+      parameters: Map[String, String],
+      partitionColumns: Seq[String],
+      outputMode: OutputMode): ForeachDatasetSink = {
+    new ForeachDatasetSink(Map.empty[String, String])
   }
 }
 
@@ -27,9 +32,16 @@ case class ForeachDatasetSinkProvider[T: Encoder](func: Dataset[T] => Unit)
  * Custom sink similar to the old foreachRDD. Do not construct directly, instead provide
  * [[ForeachDatasetSinkProvider]] to Spark's DataStreamWriter format.
  */
-case class ForeachDatasetSink[T: Encoder](func: Dataset[T] => Unit)
-    extends Sink {
+case class ForeachDatasetSink(parameters: Map[String, String]) extends Sink {
+  val estimator = new StreamingNaiveBayes
+
   def addBatch(batchId: Long, data: DataFrame): Unit = {
-    func(data.as[T])
+    estimator.update(data)
+    if (estimator.hasModel) {
+      println(estimator.getModel.pi)
+      println(estimator.getModel.theta)
+    }
   }
 }
+
+class DefaultSource extends ForeachDatasetSinkProvider
