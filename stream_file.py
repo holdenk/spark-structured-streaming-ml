@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import sys
 import time
 
@@ -14,4 +15,5 @@ if __name__ == "__main__":
         python stream_file.py data_file.txt | nc -lk 9999
     """
     file_path = sys.argv[1]
-    stream_file(file_path)
+    while True:
+        stream_file(file_path)
