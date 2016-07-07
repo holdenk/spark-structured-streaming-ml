@@ -1,10 +1,12 @@
 package com.highperformancespark.examples.structuredstreaming
 
+import org.apache.spark.SparkException
+import org.apache.spark.ml.classification.ProbabilisticClassificationModel
 import org.apache.spark.sql.streaming.OutputMode
 
 import org.apache.spark.ml.util.Identifiable
-import org.apache.spark.mllib.linalg._
-import org.apache.spark.mllib.regression.LabeledPoint
+import org.apache.spark.ml.linalg._
+import org.apache.spark.ml.feature.LabeledPoint
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql._
 import org.apache.spark.ml.param._
@@ -15,6 +17,7 @@ trait StreamingNaiveBayesParams extends Params {
   /**
    * The smoothing parameter.
    * (default = 1.0).
+   *
    * @group param
    */
   final val smoothing: DoubleParam = new DoubleParam(this, "smoothing", "The smoothing parameter.",
@@ -27,8 +30,70 @@ trait StreamingNaiveBayesParams extends Params {
 class StreamingNaiveBayesModel(
     val uid: String,
     val pi: Vector,
-    val theta: Matrix) {
+    val theta: Matrix) extends ProbabilisticClassificationModel[Vector, StreamingNaiveBayesModel]
+  with StreamingNaiveBayesParams {
   // TODO: it would be nice if we could inherit from NaiveBayesModel
+
+//  /**
+//   * Bernoulli scoring requires log(condprob) if 1, log(1-condprob) if 0.
+//   * This precomputes log(1.0 - exp(theta)) and its sum which are used for the linear algebra
+//   * application of this condition (in predict function).
+//   */
+//  private lazy val (thetaMinusNegTheta, negThetaSum) = $(modelType) match {
+//    case Multinomial => (None, None)
+//    case Bernoulli =>
+//      val negTheta = theta.map(value => math.log(1.0 - math.exp(value)))
+//      val ones = new DenseVector(Array.fill(theta.numCols) {1.0})
+//      val thetaMinusNegTheta = theta.map { value =>
+//        value - math.log(1.0 - math.exp(value))
+//      }
+//      (Option(thetaMinusNegTheta), Option(negTheta.multiply(ones)))
+//    case _ =>
+//      // This should never happen.
+//      throw new UnknownError(s"Invalid modelType: ${$(modelType)}.")
+//  }
+
+  override val numFeatures: Int = theta.numCols
+
+  override val numClasses: Int = pi.size
+
+  private def multinomialCalculation(features: Vector) = {
+    val prob = theta.multiply(features)
+    axpy(1.0, pi, prob)
+    prob
+  }
+
+  override protected def predictRaw(features: Vector): Vector = {
+    multinomialCalculation(features)
+  }
+
+  override protected def raw2probabilityInPlace(rawPrediction: Vector): Vector = {
+    rawPrediction match {
+      case dv: DenseVector =>
+        var i = 0
+        val size = dv.size
+        val maxLog = dv.values.max
+        while (i < size) {
+          dv.values(i) = math.exp(dv.values(i) - maxLog)
+          i += 1
+        }
+        val probSum = dv.values.sum
+        i = 0
+        while (i < size) {
+          dv.values(i) = dv.values(i) / probSum
+          i += 1
+        }
+        dv
+      case sv: SparseVector =>
+        throw new RuntimeException("Unexpected error in NaiveBayesModel:" +
+          " raw2probabilityInPlace encountered SparseVector")
+    }
+  }
+
+  override def copy(extra: ParamMap): StreamingNaiveBayesModel = {
+    copyValues(new StreamingNaiveBayesModel(uid, pi, theta).setParent(this.parent), extra)
+  }
+
 }
 
 class StreamingNaiveBayes (
@@ -49,6 +114,7 @@ class StreamingNaiveBayes (
   /**
    * Set the smoothing parameter.
    * Default is 1.0.
+   *
    * @group setParam
    */
   def setSmoothing(value: Double): this.type = set(smoothing, value)
