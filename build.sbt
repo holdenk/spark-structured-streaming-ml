@@ -19,7 +19,7 @@ sparkVersion := "2.0.0-SNAPSHOT"
 sparkComponents ++= Seq("core", "streaming", "mllib")
 //end::sparkComponents[]
 //tag::addSQLHiveComponent[]
-sparkComponents ++= Seq("sql", "hive", "hivecontext-compatibility", "hive-thriftserver")
+sparkComponents ++= Seq("sql", "hive", "hive-thriftserver")
 //end::addSQLHiveComponent[]
 
 parallelExecution in Test := false
@@ -36,7 +36,7 @@ libraryDependencies ++= Seq(
   //tag::sparkCSV[]
   "com.databricks" % "spark-csv_2.10" % "1.3.0",
   //end::sparkCSV[]
-  "com.holdenkarau" % "spark-testing-base_2.11" % "0.4.2-preview",
+  "com.holdenkarau" % "spark-testing-base_2.11" % "0.4.3-preview",
   "org.eclipse.jetty" % "jetty-util" % "9.3.2.v20150730",
   "org.codehaus.jackson" % "jackson-mapper-asl" % "1.8.8",
   "com.novocode" % "junit-interface" % "0.10" % "test->default",

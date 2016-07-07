@@ -15,8 +15,6 @@ import org.apache.spark.sql.execution.streaming.MemoryStream
 
 class CustomSinkSuite extends FunSuite with DataFrameSuiteBase {
 
-  protected implicit def impSqlContext: SQLContext = sqlContext
-
   test("really simple test of the custom sink") {
     import spark.implicits._
     val input = MemoryStream[String]
