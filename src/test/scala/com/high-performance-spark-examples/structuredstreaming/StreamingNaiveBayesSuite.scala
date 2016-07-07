@@ -47,9 +47,7 @@ class StreamingNaiveBayesSuite extends FunSuite with DataFrameSuiteBase {
     input.addData(inputData)
     assert(query.isActive === true)
     query.processAllAvailable()
-    /*
     assert(query.exception === None)
     assert(SimpleStreamingNaiveBayes.model.hasModel === true)
-     */
   }
 }
