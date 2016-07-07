@@ -32,25 +32,6 @@ class StreamingNaiveBayesSuite extends FunSuite with DataFrameSuiteBase {
     val assembled = assembler.transform(indexed)
     val selected = assembled
       .select(col("label").cast(DoubleType), col("features"))
-    val query1 = selected.writeStream.foreach(new ForeachWriter[Row] {
-      def open(partitionId: Long, version: Long): Boolean = {
-        println("open")
-        // open connection
-        true
-      }
-      def process(record: Row) = {
-        println("process")
-        // write string to connection
-        println(record)
-        val second = record.get(1)
-        println(second.getClass)
-      }
-
-      def close(errorOrNull: Throwable): Unit = {
-        println("close")
-        // close the connection
-      }
-    }).start()
     val labelPoints = selected.map{
       case Row(label: Double, features: org.apache.spark.ml.linalg.Vector) =>
         org.apache.spark.mllib.regression.LabeledPoint(label,
