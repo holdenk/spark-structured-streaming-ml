@@ -19,20 +19,27 @@ class CustomSinkSuite extends FunSuite with DataFrameSuiteBase {
     import spark.implicits._
     val input = MemoryStream[String]
     val doubled = input.toDS().map(x => x + " " + x)
-    doubled.writeStream
+    val query = doubled.writeStream
       .queryName("testCustomSinkBasic")
-      .format("com.highperformancespark.examples.structuredstreaming")
+      .format("com.highperformancespark.examples.structuredstreaming.CustomSinkCollectorProvider")
       .start()
-    input.addData(List("hi", "holden", "bye", "pandas"))
+    val inputData = List("hi", "holden", "bye", "pandas")
+    input.addData(inputData)
+    assert(query.isActive === true)
+    query.processAllAvailable()
+    assert(query.exception === None)
+    assert(Pandas.results(0) === inputData.map(x => x + " " + x))
   }
 }
 
-/**
- * Collect the results after converting to an RDD
- */
-class CustomSinkCollector {
+object Pandas{
   val results = new ListBuffer[Seq[String]]()
-  def addFunc(data: Dataset[String]) = {
-    results += data.rdd.collect()
+}
+
+class CustomSinkCollectorProvider extends ForeachDatasetSinkProvider {
+  override def func(df: DataFrame) {
+    val spark = df.sparkSession
+    import spark.implicits._
+    Pandas.results += df.as[String].rdd.collect()
   }
 }

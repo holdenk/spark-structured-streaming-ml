@@ -3,7 +3,6 @@
  */
 package com.highperformancespark.examples.structuredstreaming
 
-import com.high.performance.spark.examples.structuredstreaming.StreamingNaiveBayes
 import org.apache.spark.sql.streaming.OutputMode
 import org.apache.spark.sql._
 import org.apache.spark.sql.sources.{DataSourceRegister, StreamSinkProvider}
@@ -18,30 +17,30 @@ import org.apache.spark.sql.execution.streaming.Sink
  * will allow for more transformations beyond `foreach` and `collect` while preserving the
  * incremental planning.
  */
-class ForeachDatasetSinkProvider extends StreamSinkProvider {
+abstract class ForeachDatasetSinkProvider extends StreamSinkProvider {
+  def func(df: DataFrame): Unit
+
   def createSink(
       sqlContext: SQLContext,
       parameters: Map[String, String],
       partitionColumns: Seq[String],
       outputMode: OutputMode): ForeachDatasetSink = {
-    new ForeachDatasetSink(Map.empty[String, String])
+    new ForeachDatasetSink(func)
   }
 }
 
 /**
- * Custom sink similar to the old foreachRDD. Do not construct directly, instead provide
- * [[ForeachDatasetSinkProvider]] to Spark's DataStreamWriter format.
+ * Custom sink similar to the old foreachRDD.
+ * To use with the stream writer - do not construct directly, instead subclass
+ * [[ForeachDatasetSinkProvider]] and provide to Spark's DataStreamWriter format.
+ *  This can also be used directly as in StreamingNaiveBayes.scala
  */
-case class ForeachDatasetSink(parameters: Map[String, String]) extends Sink {
+case class ForeachDatasetSink(func: DataFrame => Unit)
+    extends Sink {
+
   val estimator = new StreamingNaiveBayes
 
   def addBatch(batchId: Long, data: DataFrame): Unit = {
-    estimator.update(data)
-    if (estimator.hasModel) {
-      println(estimator.getModel.pi)
-      println(estimator.getModel.theta)
-    }
+    func(data)
   }
 }
-
-class DefaultSource extends ForeachDatasetSinkProvider
