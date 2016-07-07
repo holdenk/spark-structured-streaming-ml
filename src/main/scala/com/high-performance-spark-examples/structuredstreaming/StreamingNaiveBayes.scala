@@ -7,6 +7,22 @@ import org.apache.spark.mllib.linalg._
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql._
+import org.apache.spark.ml.param._
+
+import MLUtils.axpy
+
+trait StreamingNaiveBayesParams extends Params {
+  /**
+   * The smoothing parameter.
+   * (default = 1.0).
+   * @group param
+   */
+  final val smoothing: DoubleParam = new DoubleParam(this, "smoothing", "The smoothing parameter.",
+    ParamValidators.gtEq(0))
+
+  /** @group getParam */
+  final def getSmoothing: Double = getOrDefault(smoothing)
+}
 
 class StreamingNaiveBayesModel(
     val uid: String,
@@ -15,7 +31,10 @@ class StreamingNaiveBayesModel(
   // TODO: it would be nice if we could inherit from NaiveBayesModel
 }
 
-class StreamingNaiveBayes extends Serializable {
+class StreamingNaiveBayes (
+    override val uid: String) extends StreamingNaiveBayesParams with Serializable {
+
+  def this() = this(Identifiable.randomUID("snb"))
 
   /**
    * HashMap with keys being class labels, values are
@@ -27,15 +46,17 @@ class StreamingNaiveBayes extends Serializable {
    */
   protected val countsByClass = new collection.mutable.HashMap[Double, (Long, DenseVector)]
 
-  // TODO: use ML params API
-  protected var lambda = 1.0
-
-  def setSmoothing(smoothing: Double): this.type = {
-    this.lambda = smoothing
-    this
-  }
+  /**
+   * Set the smoothing parameter.
+   * Default is 1.0.
+   * @group setParam
+   */
+  def setSmoothing(value: Double): this.type = set(smoothing, value)
+  setDefault(smoothing -> 1.0)
 
   def hasModel = countsByClass.nonEmpty
+
+  private var isModelUpdated = true
 
   /*
   /**
@@ -62,6 +83,7 @@ class StreamingNaiveBayes extends Serializable {
    * @param df Dataframe to add
    */
   def update(df: DataFrame): Unit = {
+    isModelUpdated = false
     import df.sparkSession.implicits._
     val data = df.as[LabeledPoint].rdd
     val newCountsByClass = add(data)
@@ -73,6 +95,7 @@ class StreamingNaiveBayes extends Serializable {
    * Get the log class probabilities and prior probabilities from the aggregated counts.
    */
   def getModel: StreamingNaiveBayesModel = {
+    val lambda = getSmoothing
     val numLabels = countsByClass.size
     var numDocuments = 0L
     countsByClass.foreach { case (_, (n, _)) =>
@@ -100,27 +123,6 @@ class StreamingNaiveBayes extends Serializable {
     new StreamingNaiveBayesModel(Identifiable.randomUID("snb"),
       Vectors.dense(pi),
       new DenseMatrix(labels.length, theta(0).length, theta.flatten, true))
-  }
-
-  /**
-   * a * x + y
-   */
-  def axpy(a: Double, x: Vector, y: Vector): Unit = {
-    y match {
-      case dy: DenseVector =>
-        x match {
-          case dx: DenseVector =>
-            var i = 0
-            while (i < x.size) {
-              y.toArray(i) += x(i) * a
-              i += 1
-            }
-          case sx: SparseVector =>
-            throw new NotImplementedError("SparseVector not yet supported")
-        }
-      case sy: SparseVector =>
-        throw new IllegalArgumentException("SparseVector not supported")
-    }
   }
 
   /**
@@ -158,6 +160,8 @@ class StreamingNaiveBayes extends Serializable {
       }
     ).collect()
   }
+
+  override def copy(extra: ParamMap): StreamingNaiveBayes = defaultCopy(extra)
 }
 
 
