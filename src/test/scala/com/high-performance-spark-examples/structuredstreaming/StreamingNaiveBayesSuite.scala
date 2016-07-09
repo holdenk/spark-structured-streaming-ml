@@ -34,8 +34,8 @@ class StreamingNaiveBayesSuite extends FunSuite with DataFrameSuiteBase {
       .select(col("label").cast(DoubleType), col("features"))
     val labelPoints = selected.map{
       case Row(label: Double, features: org.apache.spark.ml.linalg.Vector) =>
-        org.apache.spark.mllib.regression.LabeledPoint(label,
-          org.apache.spark.mllib.linalg.Vectors.dense(features.toArray)
+        org.apache.spark.ml.feature.LabeledPoint(label,
+          org.apache.spark.ml.linalg.Vectors.dense(features.toArray)
         )
     }
     val inputData = List(
