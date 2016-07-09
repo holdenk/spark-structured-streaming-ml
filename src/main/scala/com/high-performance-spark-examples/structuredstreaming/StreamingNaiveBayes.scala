@@ -1,6 +1,6 @@
 package com.highperformancespark.examples.structuredstreaming
 
-import org.apache.spark.sql.streaming.OutputMode
+import org.apache.spark.sql.streaming._
 
 import org.apache.spark.ml.util.Identifiable
 import org.apache.spark.mllib.linalg._
@@ -37,24 +37,20 @@ class StreamingNaiveBayes extends Serializable {
 
   def hasModel = countsByClass.nonEmpty
 
-  /*
   /**
    * Train the model on a streaming DF using evil tricks
    */
-  def evilTrain(df: DataFrame): Unit = {
+  def evilTrain(df: DataFrame): StreamingQuery = {
     val sink = new ForeachDatasetSink({df: DataFrame => update(df)})
     val sparkSession = df.sparkSession
     val evilStreamingQueryManager = EvilStreamingQueryManager(sparkSession.streams)
     evilStreamingQueryManager.startQuery(
-      "snb-train",
+      Some("snb-train"),
       None,
       df,
       sink,
-      OutputMode.Append(),
-      useTempCheckpointLocation = true,
-      ProcessingTime(0L)
-    )
-  } */
+      OutputMode.Append())
+  }
 
   /**
    * Update the class counts with a new chunk of labeled point data.

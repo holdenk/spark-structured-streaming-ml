@@ -20,7 +20,7 @@ case class Magic(label: Double, str: String)
 
 class StreamingNaiveBayesSuite extends FunSuite with DataFrameSuiteBase {
 
-  test("test the streaming naive bayes using a sink") {
+  def createTestData() = {
     import spark.implicits._
     val input = MemoryStream[Magic]
     val indexer = new StringIndexerModel("meeps",
@@ -38,16 +38,31 @@ class StreamingNaiveBayesSuite extends FunSuite with DataFrameSuiteBase {
           org.apache.spark.mllib.linalg.Vectors.dense(features.toArray)
         )
     }
-    val query = labelPoints.writeStream
-      .queryName("testCustomSinkBasic")
-      .format("com.highperformancespark.examples.structuredstreaming.StreamingNaiveBayesSinkprovider")
-      .start()
     val inputData = List(
       Magic(0, "hi"), Magic(1, "holden"), Magic(0, "bye"), Magic(1, "pandas"))
     input.addData(inputData)
+    (input, labelPoints)
+  }
+  test("test the streaming naive bayes using a sink") {
+    val (input, labeledPoints) = createTestData()
+    val query = labeledPoints.writeStream
+      .queryName("testCustomSinkBasic")
+      .format("com.highperformancespark.examples.structuredstreaming.StreamingNaiveBayesSinkprovider")
+      .start()
     assert(query.isActive === true)
     query.processAllAvailable()
     assert(query.exception === None)
     assert(SimpleStreamingNaiveBayes.model.hasModel === true)
+  }
+
+  test("test streaming naive bayes using evil train") {
+    val (input, labeledPoints) = createTestData()
+    val sb = new StreamingNaiveBayes()
+    assert(sb.hasModel === false)
+    val query = sb.evilTrain(labeledPoints.toDF)
+    assert(query.isActive === true)
+    query.processAllAvailable()
+    assert(query.exception === None)
+    assert(sb.hasModel === true)
   }
 }
