@@ -43,6 +43,18 @@ class StreamingNaiveBayesSuite extends FunSuite with DataFrameSuiteBase {
     input.addData(inputData)
     (input, labelPoints)
   }
+
+  test("test query based naive bayes") {
+    import spark.implicits._
+    val (input, labeledPoints) = createTestData()
+    val QueryBasedStreamingNaiveBayes = new QueryBasedStreamingNaiveBayes()
+    val (model, query) = QueryBasedStreamingNaiveBayes.train(labeledPoints.toDF.as[LabeledPoint])
+    assert(query.isActive === true)
+    query.processAllAvailable()
+    println("murh " + model.scores)
+    assert(!model.scores.isEmpty)
+  }
+
   test("test the streaming naive bayes using a sink") {
     val (input, labeledPoints) = createTestData()
     val query = labeledPoints.writeStream

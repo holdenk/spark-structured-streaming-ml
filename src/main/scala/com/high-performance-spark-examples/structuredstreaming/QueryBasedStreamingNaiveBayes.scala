@@ -1,7 +1,8 @@
 package com.highperformancespark.examples.structuredstreaming
 
-import org.apache.spark.sql.streaming._
 import org.apache.spark.sql._
+import org.apache.spark.sql.functions._
+import org.apache.spark.sql.streaming._
 
 import org.apache.spark.ml.feature._
 
@@ -12,19 +13,20 @@ case class QueryBasedStreamingNaiveBayesModel() {
   val scores = new scala.collection.mutable.HashMap[LabeledToken, Long]()
   def update(element: LabeledTokenCounts) = {
     val lt = LabeledToken(element.label, element.value)
-    val count = scores.getOrElse(lt, 0L)
-    scores.update(lt, count + element.count)
+    scores.update(lt, element.count)
+    println("scores " + scores)
   }
 }
 
 
 class QueryBasedStreamingNaiveBayes {
-  def train(ds: Dataset[LabeledPoint]): QueryBasedStreamingNaiveBayesModel = {
+  def train(ds: Dataset[LabeledPoint]) = {
     import ds.sparkSession.implicits._
     val counts = ds.flatMap{
       case LabeledPoint(label, vec) =>
         vec.toArray.zip(Stream from 1).map(value => LabeledToken(label, value))
-    }.groupBy($"value", $"value").agg($"value").as[LabeledTokenCounts]
+    }.groupBy($"label", $"value").agg(count($"value").alias("count"))
+      .as[LabeledTokenCounts]
     val model = new QueryBasedStreamingNaiveBayesModel()
     val foreachWriter: ForeachWriter[LabeledTokenCounts] =
       new ForeachWriter[LabeledTokenCounts] {
@@ -37,11 +39,12 @@ class QueryBasedStreamingNaiveBayes {
           // we could do that here
         }
         def process(record: LabeledTokenCounts): Unit = {
+          println("process" + record)
           model.update(record)
         }
       }
-    val query = counts.writeStream.foreach(foreachWriter)
-    query.start()
-    model
+    val query = counts.writeStream.outputMode(OutputMode.Complete()).
+      foreach(foreachWriter).start()
+    (model, query)
   }
 }
