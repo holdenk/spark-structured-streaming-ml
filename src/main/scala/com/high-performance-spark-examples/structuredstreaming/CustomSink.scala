@@ -40,7 +40,7 @@ case class ForeachDatasetSink(func: DataFrame => Unit)
 
   val estimator = new StreamingNaiveBayes()
 
-  def addBatch(batchId: Long, data: DataFrame): Unit = {
+  override def addBatch(batchId: Long, data: DataFrame): Unit = {
     func(data)
   }
 }
