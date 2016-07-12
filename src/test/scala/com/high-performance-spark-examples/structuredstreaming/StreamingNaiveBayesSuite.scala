@@ -15,6 +15,7 @@ import org.apache.spark.sql.execution.streaming.MemoryStream
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
 import org.apache.spark.ml.feature._
+import org.apache.spark.ml.linalg.Vectors
 
 case class Magic(label: Double, str: String)
 
@@ -51,8 +52,11 @@ class StreamingNaiveBayesSuite extends FunSuite with DataFrameSuiteBase {
     val (model, query) = QueryBasedStreamingNaiveBayes.train(labeledPoints.toDF.as[LabeledPoint])
     assert(query.isActive === true)
     query.processAllAvailable()
-    println("murh " + model.scores)
-    assert(!model.scores.isEmpty)
+    // Console sink example
+    labeledPoints.writeStream.format("console").start().processAllAvailable()
+    assert(
+      (List(List(1), List(0)), List(LabelCount(0.0,2), LabelCount(1.0,2)))
+        === model.counts(Vectors.dense(Array(0.0))))
   }
 
   test("test the streaming naive bayes using a sink") {
