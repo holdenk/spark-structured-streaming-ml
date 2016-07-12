@@ -79,3 +79,24 @@ mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) =>
     case _ => MergeStrategy.first
   }
 }
+
+//organization := "com.highperformancespark"
+//
+//name := "structured-streaming-examples"
+//
+//publishMavenStyle := true
+//
+//version := "0.0.1"
+//
+//crossScalaVersions := Seq("2.11.6")
+//
+//javacOptions ++= Seq("-source", "1.8", "-target", "1.8")
+//
+//scalaVersion := "2.11.8"
+//
+//libraryDependencies ++= Seq(
+//  "org.apache.spark" %% "spark-core" % "2.0.0-SNAPSHOT",
+//  "org.apache.spark" %% "spark-mllib" % "2.0.0-SNAPSHOT",
+//  "org.apache.spark" %% "spark-mllib-local" % "2.0.0-SNAPSHOT",
+//  "org.apache.spark" %% "spark-sql" % "2.0.0-SNAPSHOT")
+

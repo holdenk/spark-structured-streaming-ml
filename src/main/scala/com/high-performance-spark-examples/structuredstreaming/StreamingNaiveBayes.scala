@@ -5,7 +5,8 @@ package com.highperformancespark.examples.structuredstreaming
 import org.apache.spark.SparkException
 import org.apache.spark.ml.classification.ProbabilisticClassificationModel
 import org.apache.spark.sql.streaming._
-
+import org.apache.spark.ml.classification.{ProbabilisticClassifier, ProbabilisticClassificationModel}
+import org.apache.spark.sql.streaming.OutputMode
 
 import org.apache.spark.ml.util.Identifiable
 import org.apache.spark.ml.linalg._
@@ -36,25 +37,6 @@ class StreamingNaiveBayesModel(
     val theta: Matrix) extends ProbabilisticClassificationModel[Vector, StreamingNaiveBayesModel]
   with StreamingNaiveBayesParams {
   // TODO: it would be nice if we could inherit from NaiveBayesModel
-
-//  /**
-//   * Bernoulli scoring requires log(condprob) if 1, log(1-condprob) if 0.
-//   * This precomputes log(1.0 - exp(theta)) and its sum which are used for the linear algebra
-//   * application of this condition (in predict function).
-//   */
-//  private lazy val (thetaMinusNegTheta, negThetaSum) = $(modelType) match {
-//    case Multinomial => (None, None)
-//    case Bernoulli =>
-//      val negTheta = theta.map(value => math.log(1.0 - math.exp(value)))
-//      val ones = new DenseVector(Array.fill(theta.numCols) {1.0})
-//      val thetaMinusNegTheta = theta.map { value =>
-//        value - math.log(1.0 - math.exp(value))
-//      }
-//      (Option(thetaMinusNegTheta), Option(negTheta.multiply(ones)))
-//    case _ =>
-//      // This should never happen.
-//      throw new UnknownError(s"Invalid modelType: ${$(modelType)}.")
-//  }
 
   override val numFeatures: Int = theta.numCols
 
@@ -100,7 +82,9 @@ class StreamingNaiveBayesModel(
 }
 
 class StreamingNaiveBayes (
-    override val uid: String) extends StreamingNaiveBayesParams with Serializable {
+    override val uid: String)
+  extends ProbabilisticClassifier[Vector, StreamingNaiveBayes, StreamingNaiveBayesModel]
+  with StreamingNaiveBayesParams with Serializable {
 
   def this() = this(Identifiable.randomUID("snb"))
 
@@ -127,6 +111,9 @@ class StreamingNaiveBayes (
 
   private var isModelUpdated = true
 
+  private var latestModel: Option[StreamingNaiveBayesModel] = None
+
+
   /**
    * Train the model on a streaming DF using evil tricks
    */
@@ -140,6 +127,11 @@ class StreamingNaiveBayes (
       df,
       sink,
       OutputMode.Append())
+  }
+
+  override protected def train(dataset: Dataset[_]): StreamingNaiveBayesModel = {
+    // TODO: actually implement this method
+    getModel
   }
 
   /**
@@ -224,6 +216,23 @@ class StreamingNaiveBayes (
         (c1._1 + c2._1, c1._2)
       }
     ).collect()
+  }
+
+  /**
+   * Transform a dataframe using the latest model.
+   * @param dataset input dataset
+   * @return transformed dataset
+   */
+  def transform(dataset: DataFrame): DataFrame = {
+    latestModel match {
+      case Some(model) =>
+        if (!isModelUpdated) {
+          latestModel = Some(getModel)
+        }
+      case None =>
+        throw new SparkException("transform called before model was trained")
+    }
+    latestModel.get.transform(dataset)
   }
 
   override def copy(extra: ParamMap): StreamingNaiveBayes = defaultCopy(extra)
