@@ -40,7 +40,8 @@ libraryDependencies ++= Seq(
   "org.eclipse.jetty" % "jetty-util" % "9.3.2.v20150730",
   "org.codehaus.jackson" % "jackson-mapper-asl" % "1.8.8",
   "com.novocode" % "junit-interface" % "0.10" % "test->default",
-  "net.java.dev.jna" % "jna" % "4.2.2")
+  "net.java.dev.jna" % "jna" % "4.2.2",
+  "org.apache.spark" %% "spark-sql" % "2.0.0-SNAPSHOT" % "test")
 
 
 scalacOptions ++= Seq("-deprecation", "-unchecked")
@@ -79,24 +80,3 @@ mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) =>
     case _ => MergeStrategy.first
   }
 }
-
-//organization := "com.highperformancespark"
-//
-//name := "structured-streaming-examples"
-//
-//publishMavenStyle := true
-//
-//version := "0.0.1"
-//
-//crossScalaVersions := Seq("2.11.6")
-//
-//javacOptions ++= Seq("-source", "1.8", "-target", "1.8")
-//
-//scalaVersion := "2.11.8"
-//
-//libraryDependencies ++= Seq(
-//  "org.apache.spark" %% "spark-core" % "2.0.0-SNAPSHOT",
-//  "org.apache.spark" %% "spark-mllib" % "2.0.0-SNAPSHOT",
-//  "org.apache.spark" %% "spark-mllib-local" % "2.0.0-SNAPSHOT",
-//  "org.apache.spark" %% "spark-sql" % "2.0.0-SNAPSHOT")
-

@@ -14,8 +14,7 @@ import org.apache.spark.ml.feature.LabeledPoint
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql._
 import org.apache.spark.ml.param._
-
-import MLUtils.axpy
+import org.apache.spark.BLAS
 
 trait StreamingNaiveBayesParams extends Params {
   /**
@@ -44,7 +43,7 @@ class StreamingNaiveBayesModel(
 
   private def multinomialCalculation(features: Vector) = {
     val prob = theta.multiply(features)
-    axpy(1.0, pi, prob)
+    BLAS.axpy(1.0, pi, prob)
     prob
   }
 
@@ -81,8 +80,7 @@ class StreamingNaiveBayesModel(
 
 }
 
-class StreamingNaiveBayes (
-    override val uid: String)
+class StreamingNaiveBayes (override val uid: String)
   extends ProbabilisticClassifier[Vector, StreamingNaiveBayes, StreamingNaiveBayesModel]
   with StreamingNaiveBayesParams with Serializable {
 
@@ -122,7 +120,7 @@ class StreamingNaiveBayes (
     val sparkSession = df.sparkSession
     val evilStreamingQueryManager = EvilStreamingQueryManager(sparkSession.streams)
     evilStreamingQueryManager.startQuery(
-      Some("snb-train"),
+      Some(s"snb-train-$uid"),
       None,
       df,
       sink,
@@ -189,7 +187,7 @@ class StreamingNaiveBayes (
     update.foreach { case (label, (numDocs, termCounts)) =>
       countsByClass.get(label) match {
         case Some((n, c)) =>
-          axpy(1.0, termCounts, c)
+          BLAS.axpy(1.0, termCounts, c)
           countsByClass(label) = (n + numDocs, c)
         case None =>
           // new label encountered
@@ -208,11 +206,11 @@ class StreamingNaiveBayes (
       },
       mergeValue = (c: (Long, DenseVector), v: Vector) => {
         // TODO: deal with sparse
-        axpy(1.0, v.toDense, c._2)
+        BLAS.axpy(1.0, v.toDense, c._2)
         (c._1 + 1L, c._2)
       },
       mergeCombiners = (c1: (Long, DenseVector), c2: (Long, DenseVector)) => {
-        axpy(1.0, c2._2, c1._2)
+        BLAS.axpy(1.0, c2._2, c1._2)
         (c1._1 + c2._1, c1._2)
       }
     ).collect()
@@ -246,7 +244,6 @@ object SimpleStreamingNaiveBayes {
 class StreamingNaiveBayesSinkprovider extends ForeachDatasetSinkProvider {
   override def func(df: DataFrame) {
     val spark = df.sparkSession
-    import spark.implicits._
     SimpleStreamingNaiveBayes.model.update(df)
   }
 }
