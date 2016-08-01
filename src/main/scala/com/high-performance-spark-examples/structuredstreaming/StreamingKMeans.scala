@@ -1,5 +1,6 @@
 package com.highperformancespark.examples.structuredstreaming
 
+import org.apache.spark.ml.{Model, Estimator}
 import org.apache.spark.ml.feature.LabeledPoint
 import org.apache.spark.ml.linalg._
 import org.apache.spark.ml.param.{ParamValidators, IntParam, Params}
@@ -10,6 +11,8 @@ import org.apache.spark.BLAS
 import org.apache.spark.ml.param._
 import org.apache.spark.sql._
 import org.apache.spark.sql.streaming.{OutputMode, EvilStreamingQueryManager, StreamingQuery}
+import org.apache.spark.sql.types.{StructField, IntegerType, StructType}
+import org.apache.spark.sql.functions.{col, udf}
 
 
 trait StreamingKMeansParams extends Params {
@@ -24,10 +27,20 @@ trait StreamingKMeansParams extends Params {
 
   /** @group getParam */
   final def getK: Int = getOrDefault(k)
+
+  def validateAndTransformSchema(schema: StructType): StructType = {
+    // TODO: check feature column
+    require(!schema.fieldNames.contains("prediction"), s"Prediction column already exists")
+    StructType(schema.fields :+ StructField("prediction", IntegerType, false))
+  }
+
 }
 
-class StreamingKMeansModel(val centers: Array[Vector], val weights: Array[Double])
-  extends Serializable {
+class StreamingKMeansModel(
+    override val uid: String,
+    val centers: Array[Vector],
+    val weights: Array[Double]) extends Model[StreamingKMeansModel]
+  with StreamingKMeansParams with Serializable {
 
   private def clusterCentersWithNorm: Iterable[VectorWithNorm] =
     centers.map(new VectorWithNorm(_))
@@ -35,12 +48,26 @@ class StreamingKMeansModel(val centers: Array[Vector], val weights: Array[Double
   def predict(point: Vector): Int = {
     StreamingKMeans.findClosest(clusterCentersWithNorm, new VectorWithNorm(point))._1
   }
+
+  override def transform(dataset: Dataset[_]): DataFrame = {
+    val predictUDF = udf((vector: Vector) => predict(vector))
+    dataset.withColumn("prediction", predictUDF(col("features")))
+  }
+
+  override def transformSchema(schema: StructType): StructType = {
+    validateAndTransformSchema(schema)
+  }
+
+  override def copy(extra: ParamMap): StreamingKMeansModel = {
+    val copied = new StreamingKMeansModel(uid, centers, weights)
+    copyValues(copied, extra)
+  }
 }
 
-class StreamingKMeans(val uid: String) extends Serializable  with StreamingKMeansParams {
+class StreamingKMeans(override val uid: String)
+  extends Estimator[StreamingKMeansModel] with StreamingKMeansParams with Serializable {
 
   def this() = this(Identifiable.randomUID("snb"))
-  protected var model: StreamingKMeansModel = _
 
   /**
    * Set the number of cluster centers.
@@ -51,6 +78,17 @@ class StreamingKMeans(val uid: String) extends Serializable  with StreamingKMean
   def setK(value: Int): this.type = set(k, value)
   setDefault(k -> 1)
 
+  override def fit(dataset: Dataset[_]): StreamingKMeansModel = {
+    // TODO: implement
+    getModel
+  }
+
+  override def transformSchema(schema: StructType): StructType = {
+    validateAndTransformSchema(schema)
+  }
+
+
+  protected var model: StreamingKMeansModel = _
   protected var clusterCenters: Array[Vector] = _
   protected var clusterWeights: Array[Double] = _
   var isModelUpdated = true
@@ -77,9 +115,13 @@ class StreamingKMeans(val uid: String) extends Serializable  with StreamingKMean
       OutputMode.Append())
   }
 
+  /**
+   * Update the class counts with a new chunk of labeled point data.
+   *
+   * @param df Dataframe to add
+   */
   def update(df: DataFrame): Unit = {
     isModelUpdated = false
-    import df.sparkSession.implicits._
     val rdd = df.rdd.map { case Row(point: Vector) => point }
     add(rdd)
   }
@@ -96,7 +138,7 @@ class StreamingKMeans(val uid: String) extends Serializable  with StreamingKMean
       s"Weight for each inital center must be nonnegative but got [${weights.mkString(" ")}]")
     clusterCenters = centers
     clusterWeights = weights
-    model = new StreamingKMeansModel(centers, weights)
+    model = new StreamingKMeansModel(uid, centers, weights)
     this
   }
 
@@ -115,19 +157,26 @@ class StreamingKMeans(val uid: String) extends Serializable  with StreamingKMean
     clusterCenters =
       Array.fill(getK)(Vectors.dense(Array.fill(dim)(scala.util.Random.nextGaussian())))
     clusterWeights = Array.fill(getK)(weight)
-    model = new StreamingKMeansModel(clusterCenters, clusterWeights)
+    model = new StreamingKMeansModel(uid, clusterCenters, clusterWeights)
     this
   }
 
+  /**
+   * Get a new [[StreamingKMeansModel]] by copying the current centers and weights.
+   *
+   * Note: not threadsafe.
+   */
   def getModel: StreamingKMeansModel = {
     val centers = Array.tabulate(clusterCenters.length) { i =>
       clusterCenters(i).copy
     }
     val weights = clusterWeights.clone()
-    new StreamingKMeansModel(centers, weights)
+    new StreamingKMeansModel(uid, centers, weights)
   }
 
-
+  /**
+   * Update the cluster centers and the cluster weights with a new chunk of data.
+   */
   def add(data: RDD[Vector]): Unit = {
     val closest = data.map(point => (model.predict(point), (point, 1L)))
 
@@ -150,6 +199,7 @@ class StreamingKMeans(val uid: String) extends Serializable  with StreamingKMean
     }
   }
 
+  /** Function to merge cluster contributions */
   private val mergeContribs: ((Vector, Long), (Vector, Long)) => (Vector, Long) = (p1, p2) => {
     BLAS.axpy(1.0, p2._1, p1._1)
     (p1._1, p1._2 + p2._2)
