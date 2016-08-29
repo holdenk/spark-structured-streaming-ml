@@ -115,6 +115,7 @@ class StreamingNaiveBayes (override val uid: String)
   /**
    * Train the model on a streaming DF using evil tricks
    */
+  //tag::evilTrain[]
   def evilTrain(df: DataFrame): StreamingQuery = {
     val sink = new ForeachDatasetSink({df: DataFrame => update(df)})
     val sparkSession = df.sparkSession
@@ -126,6 +127,7 @@ class StreamingNaiveBayes (override val uid: String)
       sink,
       OutputMode.Append())
   }
+  //end::evilTrain[]
 
   override protected def train(dataset: Dataset[_]): StreamingNaiveBayesModel = {
     // TODO: actually implement this method
@@ -237,6 +239,23 @@ class StreamingNaiveBayes (override val uid: String)
 }
 
 
+// These two objects are broken up for inclusion in the book they can be merged.
+object SimpleStreamingNaiveBayesTrain {
+  //tag::goodTrain[]
+  // Train using the model inside SimpleStreamingNaiveBayes object
+  // - if called on multiple streams all streams will update the same model :(
+  // or would except if not for the hard coded query name preventing multiple
+  // of the same running.
+  def train(ds: Dataset[_]) = {
+    ds.writeStream.format(
+      "com.highperformancespark.examples.structuredstreaming." +
+        "StreamingNaiveBayesSinkprovider")
+      .queryName("trainingnaiveBayes")
+      .start()
+  }
+  //end::goodTrain[]
+}
+//tag::sbsp[]
 object SimpleStreamingNaiveBayes {
   val model = new StreamingNaiveBayes()
 }
@@ -247,3 +266,4 @@ class StreamingNaiveBayesSinkprovider extends ForeachDatasetSinkProvider {
     SimpleStreamingNaiveBayes.model.update(df)
   }
 }
+//end::sbsp[]

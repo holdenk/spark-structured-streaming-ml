@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 
+//tag::evil[]
 package org.apache.spark.sql.streaming
 
 import scala.collection.mutable
@@ -44,3 +45,4 @@ case class EvilStreamingQueryManager(streamingQueryManager: StreamingQueryManage
       outputMode)
   }
 }
+//end::evil[]
