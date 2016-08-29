@@ -15,7 +15,6 @@ javacOptions ++= Seq("-source", "1.8", "-target", "1.8")
 sparkVersion := "2.0.0"
 
 //tag::sparkComponents[]
-// TODO(Holden): re-add hive-thriftserver post Spark 2.0
 sparkComponents ++= Seq("core", "streaming", "mllib")
 //end::sparkComponents[]
 //tag::addSQLHiveComponent[]
@@ -41,7 +40,7 @@ libraryDependencies ++= Seq(
   "org.codehaus.jackson" % "jackson-mapper-asl" % "1.8.8",
   "com.novocode" % "junit-interface" % "0.10" % "test->default",
   "net.java.dev.jna" % "jna" % "4.2.2",
-  "org.apache.spark" %% "spark-sql" % "2.0.0-SNAPSHOT" % "test")
+  "org.apache.spark" %% "spark-sql" % "2.0.0" % "test")
 
 
 scalacOptions ++= Seq("-deprecation", "-unchecked")
