@@ -9,6 +9,7 @@ import org.apache.spark.sql.sources.{DataSourceRegister, StreamSinkProvider}
 import org.apache.spark.sql.execution.streaming.Sink
 
 
+//tag::foreachDatasetSink[]
 /**
  * Creates a custom sink similar to the old foreachRDD. Provided function is called for each
  * time slice with the dataset representing the time slice.
@@ -44,3 +45,4 @@ case class ForeachDatasetSink(func: DataFrame => Unit)
     func(data)
   }
 }
+//end::foreachDatasetSink[]
