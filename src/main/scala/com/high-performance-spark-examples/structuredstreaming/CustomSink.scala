@@ -39,8 +39,6 @@ abstract class ForeachDatasetSinkProvider extends StreamSinkProvider {
 case class ForeachDatasetSink(func: DataFrame => Unit)
     extends Sink {
 
-  val estimator = new StreamingNaiveBayes()
-
   override def addBatch(batchId: Long, data: DataFrame): Unit = {
     func(data)
   }
