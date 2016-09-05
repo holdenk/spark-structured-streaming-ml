@@ -78,7 +78,7 @@ object CustomSinkDemo {
     ds.writeStream.format(
       "com.highperformancespark.examples.structuredstreaming." +
         "BasicSinkProvider")
-      .queryName("trainingnaiveBayes")
+      .queryName("customSinkDemo")
       .start()
     //end::customSinkDemo[]
   }
