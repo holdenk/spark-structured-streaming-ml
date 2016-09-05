@@ -249,7 +249,7 @@ object SimpleStreamingNaiveBayesTrain {
   def train(ds: Dataset[_]) = {
     ds.writeStream.format(
       "com.highperformancespark.examples.structuredstreaming." +
-        "StreamingNaiveBayesSinkprovider")
+        "StreamingNaiveBayesSinkProvider")
       .queryName("trainingnaiveBayes")
       .start()
   }

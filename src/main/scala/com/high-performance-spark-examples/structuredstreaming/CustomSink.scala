@@ -72,3 +72,14 @@ class BasicSink extends Sink {
   }
 }
 //end::basicSink[]
+object CustomSinkDemo {
+  def write(ds: Dataset[_]) = {
+    //tag::customSinkDemo[]
+    ds.writeStream.format(
+      "com.highperformancespark.examples.structuredstreaming." +
+        "BasicSinkProvider")
+      .queryName("trainingnaiveBayes")
+      .start()
+    //end::customSinkDemo[]
+  }
+}
