@@ -44,3 +44,31 @@ case class ForeachDatasetSink(func: DataFrame => Unit)
   }
 }
 //end::foreachDatasetSink[]
+//tag::basicSink[]
+/**
+ * A basic custom sink to illustrate how the custom sink API is currently
+ * intended to be used
+ */
+class BasicSinkProvider extends StreamSinkProvider {
+  // Here we don't do any special work because our sink is so simple - but setup
+  // work can go here.
+  override def createSink(
+      sqlContext: SQLContext,
+      parameters: Map[String, String],
+      partitionColumns: Seq[String],
+      outputMode: OutputMode): BasicSink = {
+    new BasicSink()
+  }
+}
+
+class BasicSink extends Sink {
+  /*
+   * As per SPARK-16020 arbitrary transformations are not supported, but converting to an RDD
+   * allows us to do magic.
+   */
+  override def addBatch(batchId: Long, data: DataFrame) = {
+    val batchDistinctCount = data.rdd.distinct.count()
+    println(s"Batch ${batchId}'s distinct count is ${batchDistinctCount}")
+  }
+}
+//end::basicSink[]
