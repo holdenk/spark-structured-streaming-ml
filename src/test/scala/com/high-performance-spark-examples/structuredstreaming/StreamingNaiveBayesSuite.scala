@@ -63,7 +63,9 @@ class StreamingNaiveBayesSuite extends FunSuite with DataFrameSuiteBase {
     assert(query.isActive === true)
     query.processAllAvailable()
     // Console sink example
+    //tag::consoleSink[]
     labeledPoints.writeStream.format("console").start().processAllAvailable()
+    //end::consoleSink[]
     assert(
       (List(List(1), List(0)), List(LabelCount(0.0,2), LabelCount(1.0,2)))
         === model.counts(Vectors.dense(Array(0.0))))
