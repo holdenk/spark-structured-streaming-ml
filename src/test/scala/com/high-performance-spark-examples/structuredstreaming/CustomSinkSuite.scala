@@ -19,9 +19,11 @@ class CustomSinkSuite extends FunSuite with DataFrameSuiteBase {
     import spark.implicits._
     val input = MemoryStream[String]
     val doubled = input.toDS().map(x => x + " " + x)
+    val formatName = ("com.highperformancespark.examples" +
+      "structuredstreaming.CustomSinkCollectorProvider")
     val query = doubled.writeStream
       .queryName("testCustomSinkBasic")
-      .format("com.highperformancespark.examples.structuredstreaming.CustomSinkCollectorProvider")
+      .format(formatName)
       .start()
     val inputData = List("hi", "holden", "bye", "pandas")
     input.addData(inputData)

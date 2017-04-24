@@ -10,7 +10,8 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.BLAS
 import org.apache.spark.ml.param._
 import org.apache.spark.sql._
-import org.apache.spark.sql.streaming.{OutputMode, EvilStreamingQueryManager, StreamingQuery}
+import org.apache.spark.sql.streaming.{
+  OutputMode, EvilStreamingQueryManager, StreamingQuery}
 import org.apache.spark.sql.types.{StructField, IntegerType, StructType}
 import org.apache.spark.sql.functions.{col, udf}
 
@@ -30,7 +31,8 @@ trait StreamingKMeansParams extends Params {
 
   def validateAndTransformSchema(schema: StructType): StructType = {
     // TODO: check feature column
-    require(!schema.fieldNames.contains("prediction"), s"Prediction column already exists")
+    require(!schema.fieldNames.contains("prediction"),
+      s"Prediction column already exists")
     StructType(schema.fields :+ StructField("prediction", IntegerType, false))
   }
 
@@ -65,7 +67,8 @@ class StreamingKMeansModel(
 }
 
 class StreamingKMeans(override val uid: String)
-  extends Estimator[StreamingKMeansModel] with StreamingKMeansParams with Serializable {
+    extends Estimator[StreamingKMeansModel]
+    with StreamingKMeansParams with Serializable {
 
   def this() = this(Identifiable.randomUID("snb"))
 
@@ -129,13 +132,14 @@ class StreamingKMeans(override val uid: String)
   /**
    * Specify initial centers directly.
    */
-  def setInitialCenters(centers: Array[Vector], weights: Array[Double]): this.type = {
+  def setInitialCenters(centers: Array[Vector], weights: Array[Double]):
+      this.type = {
     require(centers.size == weights.size,
       "Number of initial centers must be equal to number of weights")
     require(centers.size == getK,
       s"Number of initial centers must be ${getK} but got ${centers.size}")
     require(weights.forall(_ >= 0),
-      s"Weight for each inital center must be nonnegative but got [${weights.mkString(" ")}]")
+      s"Weight for each inital center must be + but got [${weights.mkString(" ")}]")
     clusterCenters = centers
     clusterWeights = weights
     model = new StreamingKMeansModel(uid, centers, weights)
@@ -149,13 +153,16 @@ class StreamingKMeans(override val uid: String)
    * @param weight Weight for each center
    * @param seed Random seed
    */
-  def setRandomCenters(dim: Int, weight: Double, seed: Long = scala.util.Random.nextLong): this.type = {
+  def setRandomCenters(dim: Int, weight: Double,
+    seed: Long = scala.util.Random.nextLong): this.type = {
+
     require(dim > 0,
       s"Number of dimensions must be positive but got ${dim}")
     require(weight >= 0,
       s"Weight for each center must be nonnegative but got ${weight}")
     clusterCenters =
-      Array.fill(getK)(Vectors.dense(Array.fill(dim)(scala.util.Random.nextGaussian())))
+      Array.fill(getK)(
+        Vectors.dense(Array.fill(dim)(scala.util.Random.nextGaussian())))
     clusterWeights = Array.fill(getK)(weight)
     model = new StreamingKMeansModel(uid, clusterCenters, clusterWeights)
     this
@@ -200,7 +207,8 @@ class StreamingKMeans(override val uid: String)
   }
 
   /** Function to merge cluster contributions */
-  private val mergeContribs: ((Vector, Long), (Vector, Long)) => (Vector, Long) = (p1, p2) => {
+  private val mergeContribs: (
+    (Vector, Long), (Vector, Long)) => (Vector, Long) = (p1, p2) => {
     BLAS.axpy(1.0, p2._1, p1._1)
     (p1._1, p1._2 + p2._2)
   }
@@ -217,13 +225,14 @@ object StreamingKMeans {
     var bestIndex = 0
     var i = 0
     centers.foreach { center =>
-      // Since `\|a - b\| \geq |\|a\| - \|b\||`, we can use this lower bound to avoid unnecessary
-      // distance computation.
+      // Since `\|a - b\| \geq |\|a\| - \|b\||`, we can use this lower bound to
+      // avoid unnecessary distance computation.
       var lowerBoundOfSqDist = center.norm - point.norm
       lowerBoundOfSqDist = lowerBoundOfSqDist * lowerBoundOfSqDist
       if (lowerBoundOfSqDist < bestDistance) {
         val distance: Double =
-          StreamingMLUtils.fastSquaredDistance(center.vector, center.norm, point.vector, point.norm)
+          StreamingMLUtils.fastSquaredDistance(
+            center.vector, center.norm, point.vector, point.norm)
         if (distance < bestDistance) {
           bestDistance = distance
           bestIndex = i
@@ -242,5 +251,6 @@ class VectorWithNorm(val vector: Vector, val norm: Double) extends Serializable 
   def this(array: Array[Double]) = this(Vectors.dense(array))
 
   /** Converts the vector to a dense vector. */
-  def toDense: VectorWithNorm = new VectorWithNorm(Vectors.dense(vector.toArray), norm)
+  def toDense: VectorWithNorm =
+    new VectorWithNorm(Vectors.dense(vector.toArray), norm)
 }

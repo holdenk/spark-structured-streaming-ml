@@ -23,7 +23,8 @@ class StreamingKMeansSuite extends FunSuite with DataFrameSuiteBase {
     val dim = 5
     val clusterSpread = 0.1
     val seed = 63
-    // TODO: this test is very flaky. The centers do not converge for some (most?) random seeds
+    // TODO: this test is very flaky. The centers do not converge for some
+    // (most?) random seeds
     val (batches, trueCenters) =
       StreamingKMeansSuite.generateBatches(100, 80, k, dim, clusterSpread, seed)
     val inputStream = MemoryStream[TestRow]
@@ -36,9 +37,13 @@ class StreamingKMeansSuite extends FunSuite with DataFrameSuiteBase {
       skm.getModel
     }
     // TODO: use spark's testing suite
-    streamingModels.last.centers.zip(trueCenters).foreach { case (center, trueCenter) =>
-      println(s"${center.toArray.mkString(",")} | ${trueCenter.toArray.mkString(",")}")
-      assert(center.toArray.zip(trueCenter.toArray).forall(x => math.abs(x._1 - x._2) < 0.1))
+    streamingModels.last.centers.zip(trueCenters).foreach {
+      case (center, trueCenter) =>
+        val centers = center.toArray.mkString(",")
+        val trueCenters = trueCenter.toArray.mkString(",")
+        println(s"${centers} | ${trueCenters}")
+        assert(center.toArray.zip(trueCenter.toArray).forall(
+          x => math.abs(x._1 - x._2) < 0.1))
     }
     query.stop()
   }
@@ -62,7 +67,8 @@ object StreamingKMeansSuite {
       d: Int,
       r: Double,
       seed: Int,
-      initCenters: Array[Vector] = null): (IndexedSeq[IndexedSeq[TestRow]], Array[Vector]) = {
+      initCenters: Array[Vector] = null):
+      (IndexedSeq[IndexedSeq[TestRow]], Array[Vector]) = {
     val rand = scala.util.Random
     rand.setSeed(seed)
     val centers = initCenters match {
@@ -72,7 +78,8 @@ object StreamingKMeansSuite {
     val data = (0 until numBatches).map { i =>
       (0 until numPoints).map { idx =>
         val center = centers(idx % k)
-        val vec = Vectors.dense(Array.tabulate(d)(x => center(x) + rand.nextGaussian() * r))
+        val vec = Vectors.dense(
+          Array.tabulate(d)(x => center(x) + rand.nextGaussian() * r))
         TestRow(vec)
       }
     }
