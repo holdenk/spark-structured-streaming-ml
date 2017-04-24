@@ -5,7 +5,8 @@ package com.highperformancespark.examples.structuredstreaming
 import org.apache.spark.SparkException
 import org.apache.spark.ml.classification.ProbabilisticClassificationModel
 import org.apache.spark.sql.streaming._
-import org.apache.spark.ml.classification.{ProbabilisticClassifier, ProbabilisticClassificationModel}
+import org.apache.spark.ml.classification.{
+  ProbabilisticClassifier, ProbabilisticClassificationModel}
 import org.apache.spark.sql.streaming.OutputMode
 
 import org.apache.spark.ml.util.Identifiable
@@ -23,7 +24,9 @@ trait StreamingNaiveBayesParams extends Params {
    *
    * @group param
    */
-  final val smoothing: DoubleParam = new DoubleParam(this, "smoothing", "The smoothing parameter.",
+  final val smoothing: DoubleParam = new DoubleParam(this,
+    "smoothing",
+    "The smoothing parameter.",
     ParamValidators.gtEq(0))
 
   /** @group getParam */
@@ -31,9 +34,10 @@ trait StreamingNaiveBayesParams extends Params {
 }
 
 class StreamingNaiveBayesModel(
-    val uid: String,
-    val pi: Vector,
-    val theta: Matrix) extends ProbabilisticClassificationModel[Vector, StreamingNaiveBayesModel]
+  val uid: String,
+  val pi: Vector,
+  val theta: Matrix) extends
+    ProbabilisticClassificationModel[Vector, StreamingNaiveBayesModel]
   with StreamingNaiveBayesParams {
   // TODO: it would be nice if we could inherit from NaiveBayesModel
 
@@ -75,13 +79,20 @@ class StreamingNaiveBayesModel(
   }
 
   override def copy(extra: ParamMap): StreamingNaiveBayesModel = {
-    copyValues(new StreamingNaiveBayesModel(uid, pi, theta).setParent(this.parent), extra)
+    copyValues(
+      new StreamingNaiveBayesModel(
+        uid,
+        pi,
+        theta).setParent(this.parent),
+      extra)
   }
 
 }
 
 class StreamingNaiveBayes (override val uid: String)
-  extends ProbabilisticClassifier[Vector, StreamingNaiveBayes, StreamingNaiveBayesModel]
+    extends ProbabilisticClassifier[Vector,
+      StreamingNaiveBayes,
+      StreamingNaiveBayesModel]
   with StreamingNaiveBayesParams with Serializable {
 
   def this() = this(Identifiable.randomUID("snb"))
@@ -90,11 +101,13 @@ class StreamingNaiveBayes (override val uid: String)
    * HashMap with keys being class labels, values are
    * (numInstancesWithClassLabel, cumulativeTermFrequenciesForClass)
    *
-   * Note: this is stored as a mutable map so that we don't need to know the number of outcome
-   * classes beforehand. Alternately, the class could take `numLabels` as a parameter and store
-   * this as an array, which is how it is done in the batch algo.
+   * Note: this is stored as a mutable map so that we don't need to know the
+   * number of outcome classes beforehand. Alternately, the class could take
+   * `numLabels` as a parameter and store this as an array, which is how it
+   * is done in the batch algo.
    */
-  protected val countsByClass = new collection.mutable.HashMap[Double, (Long, DenseVector)]
+  protected val countsByClass = new collection.mutable.HashMap[Double,
+    (Long, DenseVector)]
 
   /**
    * Set the smoothing parameter.
@@ -149,7 +162,8 @@ class StreamingNaiveBayes (override val uid: String)
 
 
   /**
-   * Get the log class probabilities and prior probabilities from the aggregated counts.
+   * Get the log class probabilities and prior probabilities from the
+   * aggregated counts.
    */
   def getModel: StreamingNaiveBayesModel = {
     val lambda = getSmoothing
@@ -183,7 +197,8 @@ class StreamingNaiveBayes (override val uid: String)
   }
 
   /**
-   * Combine the current class counts with aggregated class counts from a new chunk of data.
+   * Combine the current class counts with aggregated class counts from a new chunk
+   * of data.
    */
   def merge(update: Array[(Double, (Long, DenseVector))]): Unit = {
     update.foreach { case (label, (numDocs, termCounts)) =>

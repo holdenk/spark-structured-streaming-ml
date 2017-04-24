@@ -39,7 +39,9 @@ class StreamingNaiveBayesSuite extends FunSuite with DataFrameSuiteBase {
       .setInputCol("str")
       .setOutputCol("strIdx")
     val indexed = indexer.transform(input.toDS())
-    val assembler = new VectorAssembler().setInputCols(Array("strIdx")).setOutputCol("features")
+    val assembler = new VectorAssembler().
+      setInputCols(Array("strIdx")).
+      setOutputCol("features")
     val assembled = assembler.transform(indexed)
     val selected = assembled
       .select(col("label").cast(DoubleType), col("features"))
@@ -59,7 +61,8 @@ class StreamingNaiveBayesSuite extends FunSuite with DataFrameSuiteBase {
     import spark.implicits._
     val (input, labeledPoints) = createTestData()
     val QueryBasedStreamingNaiveBayes = new QueryBasedStreamingNaiveBayes()
-    val (model, query) = QueryBasedStreamingNaiveBayes.train(labeledPoints.toDF.as[LabeledPoint])
+    val (model, query) = QueryBasedStreamingNaiveBayes.train(
+      labeledPoints.toDF.as[LabeledPoint])
     assert(query.isActive === true)
     query.processAllAvailable()
     // Console sink example
@@ -73,9 +76,11 @@ class StreamingNaiveBayesSuite extends FunSuite with DataFrameSuiteBase {
 
   test("test the streaming naive bayes using a sink") {
     val (input, labeledPoints) = createTestData()
+    val formatName = ("com.highperformancespark.examples.structuredstreaming" +
+      "StreamingNaiveBayesSinkprovider")
     val query = labeledPoints.writeStream
       .queryName("testCustomSinkBasic")
-      .format("com.highperformancespark.examples.structuredstreaming.StreamingNaiveBayesSinkprovider")
+      .format(formatName)
       .start()
     assert(query.isActive === true)
     query.processAllAvailable()

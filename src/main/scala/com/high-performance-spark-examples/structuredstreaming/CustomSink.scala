@@ -11,12 +11,14 @@ import org.apache.spark.sql.execution.streaming.Sink
 
 //tag::foreachDatasetSink[]
 /**
- * Creates a custom sink similar to the old foreachRDD. Provided function is called for each
- * time slice with the dataset representing the time slice.
+ * Creates a custom sink similar to the old foreachRDD. Provided function is
+ * called for each time slice with the dataset representing the time slice.
+ *
  * Provided func must consume the dataset (e.g. call `foreach` or `collect`).
- * As per SPARK-16020 arbitrary transformations are not supported, but converting to an RDD
- * will allow for more transformations beyond `foreach` and `collect` while preserving the
- * incremental planning.
+ * As per SPARK-16020 arbitrary transformations are not supported, but converting
+ * to an RDD will allow for more transformations beyond `foreach` and `collect` while
+ * preserving the incremental planning.
+ *
  */
 abstract class ForeachDatasetSinkProvider extends StreamSinkProvider {
   def func(df: DataFrame): Unit
@@ -63,8 +65,8 @@ class BasicSinkProvider extends StreamSinkProvider {
 
 class BasicSink extends Sink {
   /*
-   * As per SPARK-16020 arbitrary transformations are not supported, but converting to an RDD
-   * allows us to do magic.
+   * As per SPARK-16020 arbitrary transformations are not supported, but
+   * converting to an RDD allows us to do magic.
    */
   override def addBatch(batchId: Long, data: DataFrame) = {
     val batchDistinctCount = data.rdd.distinct.count()
